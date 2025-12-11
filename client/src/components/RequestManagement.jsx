@@ -5,21 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Clock, User, Phone, Truck, MessageSquare } from "lucide-react";
+import { Check, X, Clock, Mail, Phone, User, Truck, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
-import DeliveryPersonSelector from "./DeliveryPersonSelector"; // New Import
+import DeliveryPersonSelector from "./DeliveryPersonSelector";
 
 const RequestManagement = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
   
-  // State to track which driver is selected for which request
   const [selectedDrivers, setSelectedDrivers] = useState({});
 
   const fetchRequests = async () => {
     try {
-      // Fetch requests specifically received by the logged-in donor
       const { data } = await api.get("/donations/requests/received");
       setRequests(data);
     } catch (error) {
@@ -39,10 +37,8 @@ const RequestManagement = () => {
     try {
       const payload = { status };
       
-      // If the donor is approving the request, attach the selected driver (if any)
       if (status === 'Approved') {
         const driverId = selectedDrivers[requestId];
-        // Only attach if a driver was actually selected (not "none")
         if (driverId && driverId !== 'none') {
           payload.deliveryPerson = driverId;
         }
@@ -52,13 +48,21 @@ const RequestManagement = () => {
       
       toast.success(`Request marked as ${status}`);
       
-      // Refresh the list to update status UI immediately
       fetchRequests();
     } catch (error) {
       console.error("Update error:", error);
       toast.error(error.response?.data?.message || "Failed to update request status");
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "Pending": return <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+      case "Approved": return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200"><Check className="h-3 w-3 mr-1" />Approved</Badge>;
+      case "Rejected": return <Badge variant="destructive"><X className="h-3 w-3 mr-1" />Rejected</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
     }
   };
 
@@ -95,7 +99,6 @@ const RequestManagement = () => {
           <CardHeader className="bg-gray-50/80 pb-4 border-b border-gray-100">
             <div className="flex justify-between items-start gap-4">
               <div className="flex gap-4">
-                {/* Donation Image Thumbnail */}
                 <div className="flex-shrink-0">
                   {request.donation?.images?.[0] ? (
                     <img 
@@ -121,21 +124,11 @@ const RequestManagement = () => {
                 </div>
               </div>
               
-              {/* Status Badge */}
-              <Badge 
-                variant={request.status === 'Pending' ? 'outline' : 'default'}
-                className={
-                  request.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                  request.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : ''
-                }
-              >
-                {request.status}
-              </Badge>
+              {getStatusBadge(request.status)}
             </div>
           </CardHeader>
           
           <CardContent className="pt-6 space-y-6">
-            {/* Receiver Details */}
             <div className="flex items-start gap-4 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
               <div className="p-2.5 bg-white rounded-full shadow-sm text-blue-600">
                 <User className="h-5 w-5" />
@@ -149,13 +142,15 @@ const RequestManagement = () => {
                 </p>
                 <div className="flex flex-wrap gap-4 pt-2 text-sm text-gray-600">
                   <span className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-blue-100">
+                    <Mail className="h-3.5 w-3.5 text-blue-500" /> {request.receiver?.email || "N/A"}
+                  </span>
+                  <span className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-blue-100">
                     <Phone className="h-3.5 w-3.5 text-blue-500" /> {request.receiver?.phone || "N/A"}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Request Message */}
             {request.message && (
               <div className="pl-4 border-l-4 border-gray-200">
                 <p className="text-sm text-gray-500 font-medium mb-1">Message from receiver:</p>
@@ -163,7 +158,6 @@ const RequestManagement = () => {
               </div>
             )}
 
-            {/* Driver Selection (Only visible if Pending) */}
             {request.status === 'Pending' && (
               <div className="space-y-3 pt-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
@@ -183,7 +177,6 @@ const RequestManagement = () => {
             )}
           </CardContent>
 
-          {/* Action Buttons (Only visible if Pending) */}
           {request.status === 'Pending' && (
             <CardFooter className="bg-gray-50/80 flex gap-3 justify-end py-4 px-6 border-t border-gray-100">
               <Button 

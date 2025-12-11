@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useContext } from 'react';
-import api from '../api/axios'; // This imports your configured Axios instance
+import api from '../api/axios';
 
 const AuthContext = createContext();
 
@@ -8,7 +8,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check local storage for an existing user session
     const storedUser = localStorage.getItem('foodshare_user');
     if (storedUser) {
       try {
@@ -22,34 +21,43 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  // REAL LOGIN FUNCTION
   const login = async (email, password) => {
     try {
-      // 1. Send credentials to the backend
       const { data } = await api.post('/auth/login', { email, password });
       
-      // 2. Save the real user data (including the valid token)
       setUser(data);
       localStorage.setItem('foodshare_user', JSON.stringify(data));
       return true;
     } catch (error) {
       console.error("Login failed:", error.response?.data?.message);
-      throw error; // Let the UI handle the error message
+      throw error;
     }
   };
 
-  // REAL REGISTER FUNCTION
   const register = async (userData) => {
     try {
-      // 1. Send registration data to the backend
       const { data } = await api.post('/auth/register', userData);
       
-      // 2. Save the new user data
       setUser(data);
       localStorage.setItem('foodshare_user', JSON.stringify(data));
       return true;
     } catch (error) {
       console.error("Registration failed:", error.response?.data?.message);
+      throw error;
+    }
+  };
+
+  const updateProfile = async (formData) => {
+    try {
+      const { data } = await api.put('/auth/profile', formData);
+
+      setUser(data);
+
+      localStorage.setItem('foodshare_user', JSON.stringify(data));
+      
+      return true;
+    } catch (error) {
+      console.error("Profile update failed:", error.response?.data?.message);
       throw error;
     }
   };
@@ -60,7 +68,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, register, updateProfile, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

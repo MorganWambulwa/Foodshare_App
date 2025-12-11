@@ -20,8 +20,9 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please add a password'],
       minlength: 6,
-      select: false, // Don't return password by default in queries
+      select: false,
     },
+
     role: {
       type: String,
       enum: ['donor', 'receiver', 'driver', 'admin'],
@@ -37,7 +38,7 @@ const userSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
-      default: null, // URL to image if you implement file upload later
+      default: null, 
     },
     address: {
       type: String,
@@ -47,11 +48,10 @@ const userSchema = new mongoose.Schema(
     resetPasswordExpire: Date,
   },
   {
-    timestamps: true, // Automatically manages createdAt and updatedAt
+    timestamps: true,
   }
 );
 
-// Encrypt password using bcrypt before saving to database
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
     next();
@@ -61,7 +61,7 @@ userSchema.pre('save', async function (next) {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-// Method to match user entered password to hashed password in database
+
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };

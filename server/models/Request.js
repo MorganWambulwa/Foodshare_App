@@ -28,7 +28,7 @@ const requestSchema = new mongoose.Schema(
     },
     deliveryPerson: {
       type: mongoose.Schema.ObjectId,
-      ref: 'User', // Can be assigned to a driver
+      ref: 'User',
       default: null,
     },
     respondedAt: {
@@ -43,7 +43,6 @@ const requestSchema = new mongoose.Schema(
   }
 );
 
-// Prevent duplicate requests from the same user for the same donation
 requestSchema.index({ donation: 1, receiver: 1 }, { unique: true });
 
 export default mongoose.model('Request', requestSchema);

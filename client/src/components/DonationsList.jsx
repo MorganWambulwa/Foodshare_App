@@ -8,11 +8,10 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { addDays, isBefore, startOfDay, endOfDay } from "date-fns";
 
-// Calculate distance between two coordinates in km (Haversine formula)
 const calculateDistance = (lat1, lng1, lat2, lng2) => {
   if (lat2 === null || lng2 === null || lat2 === undefined || lng2 === undefined) return null;
   
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
   const a =
@@ -45,9 +44,6 @@ const DonationsList = ({ userType, filterByUser = false }) => {
   const fetchDonations = async () => {
     setLoading(true);
     try {
-      // Determine endpoint based on view type
-      // If filterByUser is true, we fetch the logged-in user's donations
-      // Otherwise, we fetch all available donations (for receivers)
       const endpoint = filterByUser ? '/donations/my' : '/donations';
       
       const { data } = await api.get(endpoint);
@@ -60,10 +56,8 @@ const DonationsList = ({ userType, filterByUser = false }) => {
     }
   };
 
-  // Filter donations based on filter values
   const filteredDonations = useMemo(() => {
     return donations.filter((donation) => {
-      // Search filter
       if (filters.searchQuery) {
         const query = filters.searchQuery.toLowerCase();
         const matchesSearch =
@@ -74,12 +68,10 @@ const DonationsList = ({ userType, filterByUser = false }) => {
         if (!matchesSearch) return false;
       }
 
-      // Food type filter
       if (filters.foodType && donation.foodType !== filters.foodType) {
         return false;
       }
 
-      // Expiry filter
       if (filters.expiryFilter !== "all" && donation.bestBefore) {
         const expiryDate = new Date(donation.bestBefore);
         const today = startOfDay(new Date());
@@ -97,9 +89,7 @@ const DonationsList = ({ userType, filterByUser = false }) => {
         }
       }
 
-      // Distance filter
       if (filters.maxDistance && filters.userLocation) {
-        // Mongo stores location as [lng, lat] in coordinates array
         const donationLat = donation.location?.coordinates?.[1];
         const donationLng = donation.location?.coordinates?.[0];
 
@@ -118,12 +108,10 @@ const DonationsList = ({ userType, filterByUser = false }) => {
 
   const handleRequest = async (donationId) => {
     try {
-      // Call the endpoint created in donationController: router.post('/:id/request', ...)
       await api.post(`/donations/${donationId}/request`);
 
       toast.success("Request sent successfully!");
       
-      // Refresh list to update status UI
       fetchDonations();
     } catch (error) {
       console.error("Error requesting donation:", error);

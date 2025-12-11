@@ -1,27 +1,33 @@
 import Donation from '../models/Donation.js';
 import Request from '../models/Request.js';
 
-// @desc    Create a new donation
-// @route   POST /api/donations
-// @access  Private (Donors only)
 export const createDonation = async (req, res) => {
   try {
-    // Add user to body
     req.body.donor = req.user.id;
 
-    const donation = await Donation.create(req.body);
+    if (req.file) {
+      req.body.image = `http://localhost:5000/uploads/${req.file.filename}`;
+    }
 
+    if (req.body.bestBefore === "" || req.body.bestBefore === "undefined") {
+      delete req.body.bestBefore;
+    }
+
+    if (req.body.latitude && req.body.longitude) {
+      req.body.location = {
+        type: 'Point',
+        coordinates: [parseFloat(req.body.longitude), parseFloat(req.body.latitude)]
+      };
+    }
+
+    const donation = await Donation.create(req.body);
     res.status(201).json(donation);
   } catch (error) {
     console.error("Create Donation Error:", error);
-    // FIX: Send the specific error message back to the frontend
     res.status(400).json({ message: error.message || 'Failed to create donation' });
   }
 };
 
-// @desc    Get all available donations
-// @route   GET /api/donations
-// @access  Private
 export const getDonations = async (req, res) => {
   try {
     const { foodType, status } = req.query;
@@ -40,9 +46,6 @@ export const getDonations = async (req, res) => {
   }
 };
 
-// @desc    Get donations created by logged-in user
-// @route   GET /api/donations/my
-// @access  Private (Donors)
 export const getMyDonations = async (req, res) => {
   try {
     const donations = await Donation.find({ donor: req.user.id }).sort({ createdAt: -1 });
@@ -52,9 +55,59 @@ export const getMyDonations = async (req, res) => {
   }
 };
 
-// @desc    Request a donation
-// @route   POST /api/donations/:id/request
-// @access  Private (Receivers)
+export const updateDonation = async (req, res) => {
+  try {
+    let donation = await Donation.findById(req.params.id);
+
+    if (!donation) {
+      return res.status(404).json({ message: 'Donation not found' });
+    }
+
+    if (donation.donor.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to edit this donation' });
+    }
+
+    if (donation.status !== 'Available' && donation.status !== 'Pending') {
+      return res.status(400).json({ message: 'Cannot edit donation currently in progress' });
+    }
+
+    if (req.file) {
+      req.body.image = `http://localhost:5000/uploads/${req.file.filename}`;
+    }
+
+    donation = await Donation.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+
+    res.json(donation);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteDonation = async (req, res) => {
+  try {
+    const donation = await Donation.findById(req.params.id);
+
+    if (!donation) {
+      return res.status(404).json({ message: 'Donation not found' });
+    }
+
+    if (donation.donor.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to delete this donation' });
+    }
+
+    await donation.deleteOne();
+    
+    await Request.deleteMany({ donation: donation._id });
+
+    res.json({ message: 'Donation removed' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const requestDonation = async (req, res) => {
   try {
     const donation = await Donation.findById(req.params.id);
@@ -89,14 +142,39 @@ export const requestDonation = async (req, res) => {
   }
 };
 
-// @desc    Get requests received by the donor (Incoming)
-// @route   GET /api/requests/received
-// @access  Private (Donors)
+export const cancelRequest = async (req, res) => {
+  try {
+    const request = await Request.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    if (request.receiver.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to cancel this request' });
+    }
+
+    if (request.status === 'Completed' || request.status === 'In Transit') {
+      return res.status(400).json({ message: 'Cannot cancel a request currently in progress or completed' });
+    }
+
+    await request.deleteOne();
+
+    if (request.status === 'Approved') {
+      await Donation.findByIdAndUpdate(request.donation, { status: 'Available' });
+    }
+
+    res.json({ message: 'Request cancelled successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const getReceivedRequests = async (req, res) => {
   try {
     const requests = await Request.find({ donor: req.user.id })
       .populate('receiver', 'name email phone organization')
-      .populate('donation', 'title foodType images')
+      .populate('donation', 'title foodType image') 
       .sort({ createdAt: -1 });
 
     res.json(requests);
@@ -105,12 +183,22 @@ export const getReceivedRequests = async (req, res) => {
   }
 };
 
-// @desc    Update request status (Approve/Reject)
-// @route   PATCH /api/requests/:id/status
-// @access  Private (Donor only)
+export const getMySentRequests = async (req, res) => {
+  try {
+    const requests = await Request.find({ receiver: req.user.id })
+      .populate('donation') 
+      .populate('donor', 'name phone organization') 
+      .sort({ createdAt: -1 });
+
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const updateRequestStatus = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, deliveryPerson } = req.body; 
     const request = await Request.findById(req.params.id);
 
     if (!request) {
@@ -123,10 +211,17 @@ export const updateRequestStatus = async (req, res) => {
 
     request.status = status;
     request.respondedAt = Date.now();
+
+    if (status === 'Approved' && deliveryPerson) {
+      request.deliveryPerson = deliveryPerson;
+    }
+
     await request.save();
 
     if (status === 'Approved') {
       await Donation.findByIdAndUpdate(request.donation, { status: 'Pending' });
+    } else if (status === 'Rejected') {
+       await Donation.findByIdAndUpdate(request.donation, { status: 'Available' });
     }
 
     res.json(request);
@@ -135,14 +230,8 @@ export const updateRequestStatus = async (req, res) => {
   }
 };
 
-// ... existing code ...
-
-// @desc    Get deliveries assigned to the logged-in driver
-// @route   GET /api/donations/deliveries
-// @access  Private (Drivers)
 export const getMyDeliveries = async (req, res) => {
   try {
-    // Find requests where this user is the delivery person and status is not rejected/cancelled
     const deliveries = await Request.find({ 
       deliveryPerson: req.user.id,
       status: { $in: ['Approved', 'In Transit', 'Completed'] }
@@ -160,7 +249,7 @@ export const getMyDeliveries = async (req, res) => {
 
 export const updateDeliveryStatus = async (req, res) => {
   try {
-    const { status } = req.body; // 'In Transit' or 'Completed'
+    const { status } = req.body; 
     const request = await Request.findById(req.params.id);
 
     if (!request) return res.status(404).json({ message: 'Delivery not found' });
@@ -172,7 +261,6 @@ export const updateDeliveryStatus = async (req, res) => {
     request.status = status;
     await request.save();
 
-    // Sync with Donation status
     if (status === 'In Transit') {
       await Donation.findByIdAndUpdate(request.donation, { status: 'In Transit' });
     } else if (status === 'Completed') {

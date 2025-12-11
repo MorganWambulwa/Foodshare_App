@@ -36,7 +36,6 @@ const donationSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Add a pickup address'],
     },
-    // GeoJSON Point for Mapbox integration
     location: {
       type: {
         type: String,
@@ -44,15 +43,14 @@ const donationSchema = new mongoose.Schema(
         default: 'Point',
       },
       coordinates: {
-        type: [Number], // [longitude, latitude]
-        index: '2dsphere', // For geospatial queries
+        type: [Number],
+        index: '2dsphere',
         default: [0, 0],
       },
       formattedAddress: String,
     },
     bestBefore: {
       type: Date,
-      // Optional: Food might be non-perishable
     },
     status: {
       type: String,
@@ -60,7 +58,7 @@ const donationSchema = new mongoose.Schema(
       default: 'Available',
     },
     images: {
-      type: [String], // Array of image URLs
+      type: [String],
       default: [],
     },
     allergens: {
@@ -68,7 +66,7 @@ const donationSchema = new mongoose.Schema(
       default: [],
     },
     dietaryInfo: {
-      type: [String], // e.g., Halal, Vegan
+      type: [String],
       default: [],
     },
     donor: {

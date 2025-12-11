@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import api from "@/api/axios"; // Updated to use the @ alias for consistency
+import api from "@/api/axios";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,8 +14,6 @@ const DeliveryPersonSelector = ({ value, onValueChange, disabled }) => {
     const fetchDeliveryPersons = async () => {
       try {
         setLoading(true);
-        // FIX: The endpoint must match the server route we created in 'authRoutes.js'
-        // The server controller 'getDrivers' handles the role filtering automatically
         const { data } = await api.get("/auth/drivers");
         
         setDeliveryPersons(data || []);
@@ -43,7 +41,6 @@ const DeliveryPersonSelector = ({ value, onValueChange, disabled }) => {
     );
   }
 
-  // If no drivers exist in the system, show a helpful message
   if (deliveryPersons.length === 0) {
     return (
       <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground border border-dashed border-gray-200">
@@ -59,7 +56,6 @@ const DeliveryPersonSelector = ({ value, onValueChange, disabled }) => {
         <SelectValue placeholder="Select a driver (optional)" />
       </SelectTrigger>
       <SelectContent>
-        {/* Option for No Driver / Receiver Pickup */}
         <SelectItem value="none">
           <div className="flex items-center gap-3 py-1">
             <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
@@ -72,7 +68,6 @@ const DeliveryPersonSelector = ({ value, onValueChange, disabled }) => {
           </div>
         </SelectItem>
 
-        {/* List of Real Drivers */}
         {deliveryPersons.map((person) => (
           <SelectItem key={person._id} value={person._id}>
             <div className="flex items-center gap-3 py-1">

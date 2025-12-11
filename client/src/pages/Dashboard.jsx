@@ -1,217 +1,334 @@
-import { useEffect, useState } from "react";
-import api from "@/api/axios";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; 
+import Navbar from "@/components/Navbar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import DonationCard from "@/components/DonationCard";
+import CreateDonationForm from "@/components/CreateDonationForm";
+import RequestManagement from "@/components/RequestManagement";
+import DeliveryTracker from "@/components/DeliveryTracker";
+import DonationsMap from "@/components/DonationsMap"; 
+import { useAuth } from "../context/AuthContext";
+import { 
+  PlusCircle, 
+  Search, 
+  Filter, 
+  X, 
+  MapPin, 
+  Package, 
+  AlertCircle, 
+  ArrowLeft,
+  Calendar,
+  ImageOff,
+  Trash2
+} from "lucide-react";
+import api from "@/api/axios";
 import { toast } from "sonner";
-import { Check, X, Clock, Mail, Phone, User, Truck, MessageSquare } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import DeliveryPersonSelector from "@/components/DeliveryPersonSelector";
+import { Card, CardContent } from "@/components/ui/card";
 
-const RequestManagement = () => {
-  const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [processingId, setProcessingId] = useState(null);
+const FALLBACK_DONATIONS = [
+  { _id: "demo-1", title: "Demo Vegetables", foodType: "Vegetables", quantity: "15kg", pickupLocation: "Nairobi", status: "Available", donor: { name: "Demo User" } }
+];
+
+const Dashboard = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   
-  // State to track which driver is selected for which request ID
-  const [selectedDrivers, setSelectedDrivers] = useState({});
+  const [showCreate, setShowCreate] = useState(false);
+  const [search, setSearch] = useState("");
+  
+  const [donations, setDonations] = useState([]);
+  const [myRequests, setMyRequests] = useState([]); 
+  
+  const [loading, setLoading] = useState(true);
+  const [selectedDonation, setSelectedDonation] = useState(null);
+  const [error, setError] = useState(null);
 
-  const fetchRequests = async () => {
+  const getDefaultTab = () => {
+    if (user?.role === 'driver') return 'deliveries';
+    if (user?.role === 'donor') return 'donations';
+    return 'overview';
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      // Fetch requests specifically received by the logged-in donor
-      const { data } = await api.get("/donations/requests/received");
-      setRequests(data);
-    } catch (error) {
-      console.error("Fetch error:", error);
-      toast.error("Could not load incoming requests");
-    } finally {
+      if (user?.role === 'driver') {
+        setLoading(false);
+      } else if (user?.role === 'donor') {
+        const { data } = await api.get('/donations/my');
+        setDonations(data);
+        setLoading(false);
+      } else {
+        const [donationsRes, requestsRes] = await Promise.all([
+          api.get('/donations'),
+          api.get('/donations/requests/my')
+        ]);
+        setDonations(donationsRes.data);
+        setMyRequests(requestsRes.data);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Dashboard Fetch Error:", err);
+      if (!err.response && user?.role === 'receiver') {
+         setError("Could not connect. Showing demo data.");
+         setDonations(FALLBACK_DONATIONS);
+      } else {
+        if (user?.role === 'donor') setDonations([]);
+      }
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    fetchData();
+  }, [user]);
 
-  const handleStatusUpdate = async (requestId, status) => {
-    setProcessingId(requestId);
+
+  const handleRequestDonation = async (id) => {
+    if (id.startsWith("demo-")) return toast.info("Demo item cannot be requested.");
+    if (!confirm("Request this donation?")) return;
     try {
-      const payload = { status };
-      
-      // If the donor is approving the request, check if a driver was selected
-      if (status === 'Approved') {
-        const driverId = selectedDrivers[requestId];
-        // Only attach if a driver was actually selected (and not the "none" placeholder)
-        if (driverId && driverId !== 'none') {
-          payload.deliveryPerson = driverId;
-        }
-      }
+      await api.post(`/donations/${id}/request`, { message: `Request from ${user.name}` });
+      toast.success("Request sent!");
+      fetchData(); 
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Request failed");
+    }
+  };
 
-      await api.patch(`/donations/requests/${requestId}/status`, payload);
-      
-      toast.success(`Request marked as ${status}`);
-      
-      // Refresh the list to update status UI immediately
-      fetchRequests();
+  const handleCancelRequest = async (requestId) => {
+    if (!confirm("Are you sure you want to cancel this request?")) return;
+    try {
+      await api.delete(`/donations/requests/${requestId}/cancel`);
+      toast.success("Request cancelled successfully");
+      fetchData(); 
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to cancel");
+    }
+  };
+
+  const handleDeleteDonation = async (id) => {
+    if (!confirm("Delete this donation? This cannot be undone.")) return;
+    try {
+      await api.delete(`/donations/${id}`);
+      toast.success("Donation deleted successfully");
+      fetchData(); 
     } catch (error) {
-      console.error("Update error:", error);
-      toast.error(error.response?.data?.message || "Failed to update request status");
-    } finally {
-      setProcessingId(null);
+      toast.error("Failed to delete donation");
     }
   };
 
-  // Helper for Status Badges
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "Pending": return <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
-      case "Approved": return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200"><Check className="h-3 w-3 mr-1" />Approved</Badge>;
-      case "Rejected": return <Badge variant="destructive"><X className="h-3 w-3 mr-1" />Rejected</Badge>;
-      default: return <Badge variant="outline">{status}</Badge>;
-    }
+  const handleViewDetails = (id) => {
+    const donation = donations.find(d => d._id === id);
+    if (donation) setSelectedDonation(donation);
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
-  }
-
-  if (requests.length === 0) {
-    return (
-      <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50/50">
-        <MessageSquare className="h-10 w-10 text-gray-400 mx-auto mb-3" />
-        <p className="text-gray-500 font-medium">No pending requests at the moment.</p>
-        <p className="text-sm text-gray-400">When receivers request your food, they will appear here.</p>
-      </div>
-    );
-  }
+  const filteredDonations = donations.filter(d => 
+    d.title?.toLowerCase().includes(search.toLowerCase()) || 
+    d.foodType?.toLowerCase().includes(search.toLowerCase()) ||
+    d.pickupLocation?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Incoming Requests</h2>
-        <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">
-          {requests.length} Active
-        </Badge>
-      </div>
+    <div className="min-h-screen bg-gray-50/50">
+      <Navbar />
+      
+      <div className="container mx-auto px-4 py-8 pt-24">
+        
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" onClick={() => navigate(-1)} title="Go Back">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
+              <div className="flex items-center gap-2 mt-2 text-gray-600">
+                <span>Welcome back, <span className="font-semibold text-emerald-700">{user?.name}</span></span>
+                <Badge variant="outline" className="ml-2 capitalize border-emerald-200 text-emerald-700 bg-emerald-50">
+                  {user?.role} Account
+                </Badge>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {user?.role === 'donor' && (
+              <Button onClick={() => setShowCreate(!showCreate)} className={`shadow-md transition-all ${showCreate ? 'bg-gray-800' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
+                {showCreate ? <><X className="mr-2 h-4 w-4" /> Close Form</> : <><PlusCircle className="mr-2 h-4 w-4" /> Post Donation</>}
+              </Button>
+            )}
+          </div>
+        </div>
 
-      {requests.map((request) => (
-        <Card key={request._id} className="overflow-hidden border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader className="bg-gray-50/80 pb-4 border-b border-gray-100">
-            <div className="flex justify-between items-start gap-4">
-              <div className="flex gap-4">
-                {/* Donation Image Thumbnail */}
-                <div className="flex-shrink-0">
-                  {request.donation?.images?.[0] ? (
-                    <img 
-                      src={request.donation.images[0]} 
-                      className="w-16 h-16 rounded-lg object-cover border border-gray-200" 
-                      alt="Donation" 
+        {showCreate && user?.role === 'donor' && (
+          <div className="mb-10 bg-white rounded-xl shadow-xl border border-emerald-100 p-6 animate-in slide-in-from-top-4">
+            <h2 className="text-lg font-bold text-emerald-800 mb-4 flex items-center gap-2"><Package className="h-5 w-5" /> New Donation</h2>
+            <CreateDonationForm onSuccess={() => { setShowCreate(false); fetchData(); }} />
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            <p className="text-sm font-medium">{error}</p>
+          </div>
+        )}
+
+        <Tabs defaultValue={getDefaultTab()} className="space-y-8">
+          <TabsList className="bg-white border p-1 shadow-sm rounded-lg h-12 w-full md:w-auto grid grid-cols-1 md:inline-flex">
+            {user?.role !== 'driver' && <TabsTrigger value="overview">Overview</TabsTrigger>}
+            
+            {user?.role === 'donor' && (
+              <>
+                <TabsTrigger value="donations">My Donations</TabsTrigger>
+                <TabsTrigger value="requests">Incoming Requests</TabsTrigger>
+              </>
+            )}
+            
+            {user?.role === 'receiver' && <TabsTrigger value="my-requests">My Sent Requests</TabsTrigger>}
+            
+            {user?.role === 'driver' && <TabsTrigger value="deliveries">Delivery Jobs</TabsTrigger>}
+            <TabsTrigger value="map">Live Map</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            <div className="flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input placeholder="Search..." className="pl-10" value={search} onChange={e => setSearch(e.target.value)} />
+              </div>
+              <Button variant="outline"><Filter className="h-4 w-4" /></Button>
+            </div>
+
+            {loading ? <div className="text-center py-12">Loading...</div> : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredDonations.length > 0 ? (
+                  filteredDonations.map(d => (
+                    <DonationCard 
+                      key={d._id} 
+                      donation={d} 
+                      userType={user.role} 
+                      onRequest={handleRequestDonation} 
+                      onView={handleViewDetails} 
                     />
-                  ) : (
-                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center text-xs text-gray-500 font-medium">
-                      No Img
-                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full py-16 text-center bg-white border-2 border-dashed rounded-xl">
+                    <p className="text-gray-500">No donations found.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="donations" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredDonations.length > 0 ? (
+                filteredDonations.map(d => (
+                  <DonationCard key={d._id} donation={d} userType={user.role} onView={handleViewDetails} onDelete={handleDeleteDonation} />
+                ))
+              ) : (
+                <div className="col-span-full py-16 text-center bg-white border-2 border-dashed rounded-xl">
+                  <p className="text-gray-500">You haven't posted any donations yet.</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="my-requests" className="space-y-4">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">My Sent Requests</h2>
+            {myRequests.length === 0 ? (
+              <div className="p-8 text-center bg-gray-50 rounded-lg border border-dashed border-gray-200 text-gray-500">
+                You haven't made any requests yet. Go to Overview to find food.
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {myRequests.map((req) => (
+                  <Card key={req._id} className="border-l-4 border-l-blue-500 shadow-sm">
+                    <CardContent className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <h3 className="font-bold text-lg text-gray-900">{req.donation?.title || "Unknown Item"}</h3>
+                        <div className="flex items-center gap-3 mt-1 text-sm text-gray-600">
+                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {format(new Date(req.createdAt), "PPP")}</span>
+                          <Badge variant={req.status === 'Pending' ? 'secondary' : req.status === 'Approved' ? 'default' : 'outline'}>
+                            {req.status}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">Donor: {req.donor?.name || "Unknown"}</p>
+                      </div>
+                      
+                      {(req.status === 'Pending' || req.status === 'Approved') && (
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          className="bg-red-50 text-red-600 hover:bg-red-100 border-red-100"
+                          onClick={() => handleCancelRequest(req._id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" /> Cancel Request
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="requests"><RequestManagement /></TabsContent>
+          <TabsContent value="deliveries"><DeliveryTracker /></TabsContent>
+          <TabsContent value="map">
+            <div className="h-[600px] w-full rounded-xl overflow-hidden border border-gray-200 shadow-lg relative bg-gray-100">
+               <DonationsMap />
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {selectedDonation && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+              <div className="relative h-64 bg-gray-100 group">
+                {selectedDonation.image ? (
+                  <img src={selectedDonation.image} alt={selectedDonation.title} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-100">
+                    <ImageOff className="h-16 w-16 mb-3 opacity-30" />
+                    <span className="text-sm font-medium">No Preview Available</span>
+                  </div>
+                )}
+                <button onClick={() => setSelectedDonation(null)} className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full"><X className="h-5 w-5" /></button>
+              </div>
+              <div className="p-8 space-y-6">
+                <h2 className="text-3xl font-bold text-gray-900">{selectedDonation.title}</h2>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="font-bold flex gap-2"><Package className="h-4 w-4" /> Details</h3>
+                    <p className="text-sm mt-2">Qty: {selectedDonation.quantity}</p>
+                    <p className="text-sm">Type: {selectedDonation.foodType}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="font-bold flex gap-2"><MapPin className="h-4 w-4" /> Location</h3>
+                    <p className="text-sm mt-2">{selectedDonation.pickupLocation}</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 pt-4 border-t">
+                  <Button variant="outline" className="flex-1" onClick={() => setSelectedDonation(null)}>Close</Button>
+                  {user?.role === 'receiver' && selectedDonation.status === 'Available' && (
+                    <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { handleRequestDonation(selectedDonation._id); setSelectedDonation(null); }}>Request</Button>
                   )}
                 </div>
-                
-                <div>
-                  <CardTitle className="text-lg font-semibold text-gray-900">
-                    {request.donation?.title || "Unknown Item"}
-                  </CardTitle>
-                  <CardDescription className="flex items-center gap-2 mt-1">
-                    <Clock className="h-3 w-3" />
-                    Requested {format(new Date(request.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                  </CardDescription>
-                </div>
-              </div>
-              
-              {/* Status Badge */}
-              {getStatusBadge(request.status)}
-            </div>
-          </CardHeader>
-          
-          <CardContent className="pt-6 space-y-6">
-            {/* Receiver Details */}
-            <div className="flex items-start gap-4 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
-              <div className="p-2.5 bg-white rounded-full shadow-sm text-blue-600">
-                <User className="h-5 w-5" />
-              </div>
-              <div className="space-y-1">
-                <p className="font-semibold text-gray-900 text-sm">
-                  {request.receiver?.name || "Unknown User"}
-                </p>
-                <p className="text-xs text-blue-600 font-medium bg-blue-100/50 inline-block px-2 py-0.5 rounded-full">
-                  {request.receiver?.organization || "Individual Receiver"}
-                </p>
-                <div className="flex flex-wrap gap-4 pt-2 text-sm text-gray-600">
-                  <span className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-blue-100">
-                    <Mail className="h-3.5 w-3.5 text-blue-500" /> {request.receiver?.email || "N/A"}
-                  </span>
-                  <span className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-blue-100">
-                    <Phone className="h-3.5 w-3.5 text-blue-500" /> {request.receiver?.phone || "N/A"}
-                  </span>
-                </div>
               </div>
             </div>
-
-            {/* Request Message */}
-            {request.message && (
-              <div className="pl-4 border-l-4 border-gray-200">
-                <p className="text-sm text-gray-500 font-medium mb-1">Message from receiver:</p>
-                <p className="text-gray-700 italic">"{request.message}"</p>
-              </div>
-            )}
-
-            {/* Driver Selection (Only visible if Pending) */}
-            {request.status === 'Pending' && (
-              <div className="space-y-3 pt-2">
-                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-emerald-600" /> 
-                  Assign a Driver (Optional)
-                </label>
-                <div className="max-w-md">
-                  <DeliveryPersonSelector 
-                    value={selectedDrivers[request._id] || "none"}
-                    onValueChange={(val) => setSelectedDrivers(prev => ({ ...prev, [request._id]: val }))}
-                  />
-                  <p className="text-xs text-gray-500 mt-1.5">
-                    Select a driver if you need help delivering this item. Otherwise, the receiver will pick it up.
-                  </p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-
-          {/* Action Buttons (Only visible if Pending) */}
-          {request.status === 'Pending' && (
-            <CardFooter className="bg-gray-50/80 flex gap-3 justify-end py-4 px-6 border-t border-gray-100">
-              <Button 
-                variant="outline" 
-                className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                onClick={() => handleStatusUpdate(request._id, 'Rejected')}
-                disabled={processingId === request._id}
-              >
-                Reject
-              </Button>
-              <Button 
-                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
-                onClick={() => handleStatusUpdate(request._id, 'Approved')}
-                disabled={processingId === request._id}
-              >
-                {processingId === request._id ? "Processing..." : "Approve & Assign"}
-              </Button>
-            </CardFooter>
-          )}
-        </Card>
-      ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
-export default RequestManagement;
+export default Dashboard;

@@ -4,8 +4,11 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import Privacy from "./pages/Privacy"; 
+import Terms from "./pages/Terms"; 
+import Cookies from "./pages/Cookies"; 
 
-// Protected Route Wrapper
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return <div className="h-screen w-full flex items-center justify-center bg-gray-50">Loading...</div>;
@@ -18,11 +21,12 @@ function App() {
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <Routes>
-          {/* Public Routes */}
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/cookies" element={<Cookies />} />
           
-          {/* Protected Routes */}
           <Route 
             path="/dashboard" 
             element={
@@ -31,8 +35,15 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } 
+          />
           
-          {/* Catch-all redirect */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
         <Toaster position="top-right" richColors />

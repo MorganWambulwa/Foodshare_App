@@ -1,28 +1,22 @@
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 
-// Generate JWT Token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: '30d',
   });
 };
 
-// @desc    Register new user
-// @route   POST /api/auth/register
-// @access  Public
 export const registerUser = async (req, res) => {
   try {
     const { name, email, password, role, phone, organization } = req.body;
 
-    // Check if user exists
     const userExists = await User.findOne({ email });
 
     if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Create user
     const user = await User.create({
       name,
       email,
@@ -48,15 +42,10 @@ export const registerUser = async (req, res) => {
   }
 };
 
-// @desc    Authenticate a user
-// @route   POST /api/auth/login
-// @access  Public
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check for user email
-    // Explicitly include password because we set select: false in model
     const user = await User.findOne({ email }).select('+password');
 
     if (user && (await user.matchPassword(password))) {
@@ -66,6 +55,9 @@ export const loginUser = async (req, res) => {
         email: user.email,
         role: user.role,
         token: generateToken(user._id),
+        phone: user.phone,
+        organization: user.organization,
+        avatar: user.avatar,
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
@@ -75,9 +67,6 @@ export const loginUser = async (req, res) => {
   }
 };
 
-// @desc    Get current user data
-// @route   GET /api/auth/me
-// @access  Private
 export const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -87,11 +76,48 @@ export const getMe = async (req, res) => {
   }
 };
 
-
 export const getDrivers = async (req, res) => {
   try {
     const drivers = await User.find({ role: 'driver' }).select('name email phone avatar');
     res.json(drivers);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (user) {
+      user.name = req.body.name || user.name;
+      user.email = req.body.email || user.email;
+      user.phone = req.body.phone || user.phone;
+      user.organization = req.body.organization || user.organization;
+
+      if (req.body.password) {
+        user.password = req.body.password;
+      }
+
+      if (req.file) {
+        user.avatar = `http://localhost:5000/uploads/${req.file.filename}`;
+      }
+
+      const updatedUser = await user.save();
+
+      res.json({
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        phone: updatedUser.phone,
+        organization: updatedUser.organization,
+        avatar: updatedUser.avatar,
+        token: generateToken(updatedUser._id),
+      });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

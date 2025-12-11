@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const Hero = () => {
+  const { user } = useAuth();
   const heroImage = "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&q=80";
 
   return (
@@ -32,13 +34,14 @@ const Hero = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4">
-            <Link to="/auth">
+            <Link to={user ? "/dashboard" : "/auth"}>
               <Button size="lg" className="bg-gradient-hero hover:opacity-90 text-lg px-8 py-6 shadow-xl shadow-emerald-200 group w-full sm:w-auto">
                 Start Donating
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            <Link to="/auth">
+            
+            <Link to={user ? "/dashboard" : "/auth"}>
               <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-emerald-200 text-emerald-700 hover:bg-emerald-50 w-full sm:w-auto">
                 Request Food
               </Button>

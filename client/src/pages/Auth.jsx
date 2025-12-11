@@ -15,15 +15,13 @@ const Auth = () => {
   const { login, register } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  // Login State
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // Register State
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPass, setRegPass] = useState("");
-  const [role, setRole] = useState("donor");
+  const [role, setRole] = useState("donor"); 
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -105,27 +103,37 @@ const Auth = () => {
                     <Label htmlFor="reg-password">Password</Label>
                     <Input id="reg-password" type="password" placeholder="••••••••" value={regPass} onChange={e => setRegPass(e.target.value)} required />
                   </div>
+                  
                   <div className="space-y-2">
                     <Label>I want to...</Label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       <Button 
                         type="button" 
                         variant={role === 'donor' ? 'default' : 'outline'} 
-                        className={role === 'donor' ? 'bg-emerald-600' : ''}
+                        className={role === 'donor' ? 'bg-emerald-600 text-xs' : 'text-xs'}
                         onClick={() => setRole('donor')}
                       >
-                        Donate Food
+                        Donate
                       </Button>
                       <Button 
                         type="button" 
                         variant={role === 'receiver' ? 'default' : 'outline'} 
-                        className={role === 'receiver' ? 'bg-emerald-600' : ''}
+                        className={role === 'receiver' ? 'bg-emerald-600 text-xs' : 'text-xs'}
                         onClick={() => setRole('receiver')}
                       >
-                        Receive Food
+                        Receive
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant={role === 'driver' ? 'default' : 'outline'} 
+                        className={role === 'driver' ? 'bg-emerald-600 text-xs' : 'text-xs'}
+                        onClick={() => setRole('driver')}
+                      >
+                        Deliver
                       </Button>
                     </div>
                   </div>
+
                   <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={loading}>
                     {loading ? "Creating Account..." : "Create Account"}
                   </Button>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import api from "../api/axios"; // Use your new Axios instance
+import api from "../api/axios";
 import { toast } from "sonner";
 import { 
   Loader2, 
@@ -27,33 +27,29 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
   const [totalDistance, setTotalDistance] = useState(0);
   const [estimatedTime, setEstimatedTime] = useState(0);
 
-  // Extract all stops from deliveries
   const extractStops = () => {
     const stops = [];
     
     deliveries.forEach((delivery) => {
       if (delivery.donation) {
-        // Add pickup stop
         stops.push({
-          id: `pickup-${delivery._id}`, // Adjusted to MongoDB _id
+          id: `pickup-${delivery._id}`,
           type: "pickup",
           donationTitle: delivery.donation.title,
-          address: delivery.donation.pickupLocation, // Adjusted naming
-          lat: delivery.donation.location?.coordinates?.[1] || null, // Adjusted for GeoJSON
+          address: delivery.donation.pickupLocation,
+          lat: delivery.donation.location?.coordinates?.[1] || null,
           lng: delivery.donation.location?.coordinates?.[0] || null,
           contactName: delivery.donor?.name || "Donor",
           contactPhone: delivery.donor?.phone || null,
           deliveryId: delivery._id,
         });
 
-        // Add dropoff stop (if assigned to a receiver)
         if (delivery.receiver) {
           stops.push({
             id: `dropoff-${delivery._id}`,
             type: "dropoff",
             donationTitle: delivery.donation.title,
             address: delivery.receiver.address || "Address not specified",
-            // Assuming receiver has location data, otherwise null
             lat: delivery.receiver.location?.coordinates?.[1] || null, 
             lng: delivery.receiver.location?.coordinates?.[0] || null,
             contactName: delivery.receiver.name,
@@ -67,9 +63,8 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
     return stops;
   };
 
-  // Calculate distance between two points (Haversine formula)
   const calculateDistance = (lat1, lng1, lat2, lng2) => {
-    const R = 6371; // Earth's radius in km
+    const R = 6371;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLng = ((lng2 - lng1) * Math.PI) / 180;
     const a =
@@ -82,7 +77,6 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
     return R * c;
   };
 
-  // Nearest neighbor algorithm for route optimization
   const optimizeRoute = (stops, startLat, startLng) => {
     const stopsWithCoords = stops.filter((s) => s.lat !== null && s.lng !== null);
     if (stopsWithCoords.length === 0) return stops;
@@ -92,7 +86,6 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
     let currentLat = startLat;
     let currentLng = startLng;
 
-    // Track which deliveries have been picked up
     const pickedUp = new Set();
 
     while (remaining.length > 0) {
@@ -100,8 +93,6 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
       let nearestDistance = Infinity;
 
       remaining.forEach((stop, index) => {
-        // Can only do dropoff if pickup is done (simplified logic)
-        // Note: For strict pickup->dropoff enforcement, we check IDs
         if (stop.type === "dropoff" && !pickedUp.has(stop.deliveryId)) {
           return;
         }
@@ -114,8 +105,6 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
       });
 
       if (nearestIndex === -1) {
-        // If we have remaining stops but can't reach them (e.g. orphan dropoffs), force add them to clear queue
-        // In a real app, you might handle this differently
         if (remaining.length > 0) {
              const forcedStop = remaining[0];
              optimized.push(forcedStop);
@@ -136,12 +125,10 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
       remaining.splice(nearestIndex, 1);
     }
 
-    // Add stops without coordinates at the end
     const stopsWithoutCoords = stops.filter((s) => s.lat === null || s.lng === null);
     return [...optimized, ...stopsWithoutCoords];
   };
 
-  // Calculate total route distance and estimated time
   const calculateRouteMetrics = (route, startLat, startLng) => {
     let distance = 0;
     let prevLat = startLat;
@@ -156,16 +143,12 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
     });
 
     setTotalDistance(Math.round(distance * 10) / 10);
-    // Estimate 3 min per km + 5 min per stop
     setEstimatedTime(Math.round(distance * 3 + route.length * 5));
   };
 
-  // Fetch Mapbox token from your new Backend
   useEffect(() => {
     const fetchToken = async () => {
       try {
-        // You need to create this endpoint in your backend server/routes/config.js or similar
-        // Or temporarily hardcode it: setMapboxToken("pk.eyJ1I...")
         const { data } = await api.get("/config/mapbox-token");
         if (data?.token) {
           setMapboxToken(data.token);
@@ -174,8 +157,6 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
         }
       } catch (error) {
         console.error("Error fetching Mapbox token:", error);
-        // Fallback for dev if needed
-        // setMapboxToken("YOUR_HARDCODED_TOKEN_HERE"); 
         toast.error("Failed to load map configuration");
         setLoading(false);
       }
@@ -183,7 +164,6 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
     fetchToken();
   }, []);
 
-  // Get user location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -191,7 +171,7 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
           setUserLocation([position.coords.longitude, position.coords.latitude]);
         },
         () => {
-          setUserLocation([36.8219, -1.2921]); // Default to Nairobi
+          setUserLocation([36.8219, -1.2921]);
         }
       );
     } else {
@@ -199,7 +179,6 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
     }
   }, []);
 
-  // Optimize route when deliveries or location changes
   useEffect(() => {
     if (!userLocation || !deliveries) return;
     
@@ -209,7 +188,6 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
     calculateRouteMetrics(optimized, userLocation[1], userLocation[0]);
   }, [deliveries, userLocation]);
 
-  // Initialize map
   useEffect(() => {
     if (!mapContainer.current || !mapboxToken || !userLocation) return;
 
@@ -237,23 +215,18 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
     };
   }, [mapboxToken, userLocation]);
 
-  // Add route markers and line
   useEffect(() => {
     if (!map.current || loading || optimizedRoute.length === 0) return;
 
-    // Clear existing markers
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
 
-    // Remove existing route layer
     if (map.current.getSource("route")) {
       map.current.removeLayer("route");
       map.current.removeSource("route");
     }
 
     const coordinates = [];
-    
-    // Add user location as start
     if (userLocation) {
       coordinates.push(userLocation);
       
@@ -273,7 +246,6 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
       markersRef.current.push(startMarker);
     }
 
-    // Add markers for each stop
     optimizedRoute.forEach((stop, index) => {
       if (stop.lat && stop.lng) {
         coordinates.push([stop.lng, stop.lat]);
@@ -324,7 +296,6 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
       }
     });
 
-    // Add route line
     if (coordinates.length > 1) {
       map.current.addSource("route", {
         type: "geojson",
@@ -354,7 +325,6 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
       });
     }
 
-    // Fit bounds
     if (coordinates.length > 0) {
       const bounds = new mapboxgl.LngLatBounds();
       coordinates.forEach((coord) => bounds.extend(coord));
@@ -386,7 +356,6 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
 
   return (
     <div className="space-y-4">
-      {/* Route Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
@@ -435,7 +404,6 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
         </Card>
       </div>
 
-      {/* Map */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -454,8 +422,7 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
               </div>
             )}
             <div ref={mapContainer} className="h-[400px] rounded-b-lg" />
-            
-            {/* Legend */}
+
             <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg p-3 shadow-md space-y-2 z-20">
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-3 h-3 bg-blue-500 rounded-full" />
@@ -474,14 +441,12 @@ const DeliveryRouteOptimizer = ({ deliveries }) => {
         </CardContent>
       </Card>
 
-      {/* Route Steps */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Delivery Order</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {/* Starting point */}
             <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
               <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
                 S
