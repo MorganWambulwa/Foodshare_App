@@ -104,8 +104,18 @@ PUT	/api/donations/:id	Update donation status
 DELETE	/api/donations/:id	Remove a donation listing
 
 Screenshots
-![Home](<Screenshot 2025-12-12 215350.png>)
-![Profile View](<Screenshot 2025-12-12 215403.png>)
-![Dashboard](<Screenshot 2025-12-12 215403-1.png>)
-![My Requests](<Screenshot 2025-12-12 215448.png>)
-![Map View](<Screenshot 2025-12-12 215457.png>)
+### Screenshots
+[![Home](Screenshots/Screenshot 2025-12-12 215350.png)](Screenshots/Screenshot 2025-12-12 215350.png)
+[![Profile View](Screenshots/Screenshot 2025-12-12 215403.png)](Screenshots/Screenshot 2025-12-12 215403.png)
+[![Dashboard](Screenshots/Screenshot 2025-12-12 215403-1.png)](Screenshots/Screenshot 2025-12-12 215403-1.png)
+[![My Requests](Screenshots/Screenshot 2025-12-12 215448.png)](Screenshots/Screenshot 2025-12-12 215448.png)
+[![Map View](Screenshots/Screenshot 2025-12-12 215457.png)](Screenshots/Screenshot 2025-12-12 215457.png)
+
+
+## 👥 Group Members
+
+**1. Morgan Wambulwa** (Lead / Backend / Testing)
+- **GitHub:** [@MorganWambulwa](https://github.com/MorganWambulwa)
+
+**2. Lydia Wasilwa** (Frontend / UI / [Their Role])
+- **GitHub:** [@LydiaWasilwa](https://github.com/Lydia-Wasilwa)
