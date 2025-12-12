@@ -110,22 +110,22 @@ Screenshots
 <a href="Screenshots/Screenshot 2025-12-12 215350.png">
   <img src="Screenshots/Screenshot 2025-12-12 215350.png" alt="Home" width="600">
 </a>
-<br/>
+<br />
 
 <a href="Screenshots/Screenshot 2025-12-12 215403.png">
   <img src="Screenshots/Screenshot 2025-12-12 215403.png" alt="Profile View" width="600">
 </a>
-<br/>
+<br />
 
 <a href="Screenshots/Screenshot 2025-12-12 215403-1.png">
   <img src="Screenshots/Screenshot 2025-12-12 215403-1.png" alt="Dashboard" width="600">
 </a>
-<br/>
+<br />
 
 <a href="Screenshots/Screenshot 2025-12-12 215448.png">
   <img src="Screenshots/Screenshot 2025-12-12 215448.png" alt="My Requests" width="600">
 </a>
-<br/>
+<br />
 
 <a href="Screenshots/Screenshot 2025-12-12 215457.png">
   <img src="Screenshots/Screenshot 2025-12-12 215457.png" alt="Map View" width="600">
