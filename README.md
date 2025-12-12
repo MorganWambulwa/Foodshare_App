@@ -106,11 +106,15 @@ PUT	/api/donations/:id	Update donation status
 DELETE	/api/donations/:id	Remove a donation listing
 
 Screenshots
-### Screenshots
+
 [![Home](Screenshots/Screenshot 2025-12-12 215350.png)](Screenshots/Screenshot 2025-12-12 215350.png)
+
 [![Profile View](Screenshots/Screenshot 2025-12-12 215403.png)](Screenshots/Screenshot 2025-12-12 215403.png)
+
 [![Dashboard](Screenshots/Screenshot 2025-12-12 215403-1.png)](Screenshots/Screenshot 2025-12-12 215403-1.png)
+
 [![My Requests](Screenshots/Screenshot 2025-12-12 215448.png)](Screenshots/Screenshot 2025-12-12 215448.png)
+
 [![Map View](Screenshots/Screenshot 2025-12-12 215457.png)](Screenshots/Screenshot 2025-12-12 215457.png)
 
 
