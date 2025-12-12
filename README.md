@@ -107,29 +107,11 @@ DELETE	/api/donations/:id	Remove a donation listing
 
 Screenshots
 
-<a href="Screenshots/Screenshot 2025-12-12 215350.png">
-  <img src="Screenshots/Screenshot 2025-12-12 215350.png" alt="Home" width="600">
-</a>
-<br />
-
-<a href="Screenshots/Screenshot 2025-12-12 215403.png">
-  <img src="Screenshots/Screenshot 2025-12-12 215403.png" alt="Profile View" width="600">
-</a>
-<br />
-
-<a href="Screenshots/Screenshot 2025-12-12 215403-1.png">
-  <img src="Screenshots/Screenshot 2025-12-12 215403-1.png" alt="Dashboard" width="600">
-</a>
-<br />
-
-<a href="Screenshots/Screenshot 2025-12-12 215448.png">
-  <img src="Screenshots/Screenshot 2025-12-12 215448.png" alt="My Requests" width="600">
-</a>
-<br />
-
-<a href="Screenshots/Screenshot 2025-12-12 215457.png">
-  <img src="Screenshots/Screenshot 2025-12-12 215457.png" alt="Map View" width="600">
-</a>
+Screenshots/Screenshot 2025-12-12 215403.png
+Screenshots/Screenshot 2025-12-12 215350.png
+Screenshots/Screenshot 2025-12-12 215433.png
+Screenshots/Screenshot 2025-12-12 215457.png
+Screenshots/Screenshot 2025-12-12 215448.png
 
 
 ## 👥 Group Members
