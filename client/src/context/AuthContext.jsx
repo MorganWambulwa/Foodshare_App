@@ -16,6 +16,7 @@ export const AuthProvider = ({ children }) => {
       } catch (e) {
         console.error("Failed to parse user", e);
         localStorage.removeItem('foodshare_user');
+        localStorage.removeItem('token');
       }
     }
     setLoading(false);
@@ -27,6 +28,11 @@ export const AuthProvider = ({ children }) => {
       
       setUser(data);
       localStorage.setItem('foodshare_user', JSON.stringify(data));
+      
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+      
       return true;
     } catch (error) {
       console.error("Login failed:", error.response?.data?.message);
@@ -40,6 +46,11 @@ export const AuthProvider = ({ children }) => {
       
       setUser(data);
       localStorage.setItem('foodshare_user', JSON.stringify(data));
+
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+
       return true;
     } catch (error) {
       console.error("Registration failed:", error.response?.data?.message);
@@ -52,8 +63,11 @@ export const AuthProvider = ({ children }) => {
       const { data } = await api.put('/auth/profile', formData);
 
       setUser(data);
-
       localStorage.setItem('foodshare_user', JSON.stringify(data));
+      
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
       
       return true;
     } catch (error) {
@@ -65,6 +79,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('foodshare_user');
+    localStorage.removeItem('token');
   };
 
   return (
