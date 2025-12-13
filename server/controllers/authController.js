@@ -13,6 +13,13 @@ const getBaseUrl = (req) => {
   return `${protocol}://${host}`;
 };
 
+const cookieOptions = {
+  httpOnly: true,
+  secure: true, 
+  sameSite: 'none',
+  maxAge: 30 * 24 * 60 * 60 * 1000, 
+};
+
 export const registerUser = async (req, res) => {
   try {
     const { name, email, password, role, phone, organization } = req.body;
@@ -33,12 +40,17 @@ export const registerUser = async (req, res) => {
     });
 
     if (user) {
+      const token = generateToken(user._id);
+
+
+      res.cookie('token', token, cookieOptions);
+
       res.status(201).json({
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        token: generateToken(user._id),
+        token: token,
       });
     } else {
       res.status(400).json({ message: 'Invalid user data' });
@@ -55,12 +67,16 @@ export const loginUser = async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (user && (await user.matchPassword(password))) {
+      const token = generateToken(user._id);
+
+      res.cookie('token', token, cookieOptions);
+
       res.json({
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        token: generateToken(user._id),
+        token: token,
         phone: user.phone,
         organization: user.organization,
         avatar: user.avatar,
@@ -111,6 +127,9 @@ export const updateProfile = async (req, res) => {
       }
 
       const updatedUser = await user.save();
+      const token = generateToken(updatedUser._id);
+
+      res.cookie('token', token, cookieOptions);
 
       res.json({
         _id: updatedUser._id,
@@ -120,7 +139,7 @@ export const updateProfile = async (req, res) => {
         phone: updatedUser.phone,
         organization: updatedUser.organization,
         avatar: updatedUser.avatar,
-        token: generateToken(updatedUser._id),
+        token: token,
       });
     } else {
       res.status(404).json({ message: 'User not found' });
